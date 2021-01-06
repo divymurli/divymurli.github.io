@@ -1,8 +1,7 @@
 # jemdoc: menu{MENU}{personal.html}
 = Personal Projects
 
-In addition to the collaborative work on large scale image collaboration, I have been building up my personal [https://github.com/divymurli github repository]. Here's a summary of personal projects:
-- A two-latent layer [https://arxiv.org/abs/1602.02282 ladder variational autoencoder], implemented in PyTorch. This is an extension of a homework assignment for Stefano Ermon's [https://deepgenerativemodels.github.io/ Deep Generative Models] course, and I hope to improve and generalize it. The original sourcecode is written using Theano, Lasagne and Parmesan and is available [https://github.com/casperkaae/LVAE/blob/master/run_models.py here]. See also [http://orbit.dtu.dk/files/121765928/1602.02282.pdf this paper] on training ladder variational autoencoders. 
-- A recurrent neural network to predict stock prices using data from [https://www.quandl.com Quandl], implemented in TensorFlow.
-- A TensorFlow implementation of Siamese neural networks, following [https://sorenbouma.github.io/blog/oneshot/ this tutorial].  
+Here is a summary of a couple of personal projects available on my [https://github.com/divymurli github]:
+- A reproducibility study of an [https://arxiv.org/abs/1912.03263 ICLR paper] about an energy-based approach to training hybrid (simultaneously generative and discriminative) deep learning models, and submitted a [https://openreview.net/forum?id=ShrPBsjByVa&referrer=%5BML%20Reproducibility%20Challenge%202020%5D(%2Fgroup%3Fid%3DML_Reproducibility_Challenge%2F2020) report] to the 2020 ML reproducibility challenge. The reprocibility study can be found [https://github.com/divymurli/ML_Reprod_HybridEnergyModels here].
+- A two-latent layer [https://arxiv.org/abs/1602.02282 ladder variational autoencoder], implemented in PyTorch. This is an extension of a homework assignment for Stefano Ermon's [https://deepgenerativemodels.github.io/ Deep Generative Models] course. The original sourcecode is written using Theano, Lasagne and Parmesan and is available [https://github.com/casperkaae/LVAE/blob/master/run_models.py here]. See also [http://orbit.dtu.dk/files/121765928/1602.02282.pdf this paper] on training ladder variational autoencoders. 
 
