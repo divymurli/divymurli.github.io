@@ -1,3 +1,4 @@
+# jemdoc: menu{MENU}{guides.html}
 = ML Deployment Guide
 
 I'm collecting a guide for ML deployment, particularly given a /pretrained/ model checkpoint.
