@@ -1,0 +1,5 @@
+= ML Deployment Guide
+
+I'm collecting a guide for ML deployment, particularly given a /pretrained/ model checkpoint.
+
+== Deploying with Docker on AWS
