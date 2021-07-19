@@ -21,11 +21,101 @@
 <div id="toptitle">
 <h1>ML Deployment Guide</h1>
 </div>
-<p>I'm collecting a guide for ML deployment, particularly given a <i>pretrained</i> model checkpoint.</p>
-<h2>Deploying with Docker on AWS</h2>
+<p>I've consolidated a guide for ML model deployment on a remote machine served by FastAPI. I assume that you are starting with a <i>pretrained</i> model checkpoint.</p>
+<h2>Deploying with Docker on AWS and FastAPI</h2>
+<p><i>Note: For reference, this tutorial was done using a <tt>t2.xlarge</tt> instance on AWS.</i></p>
+<p><i>Prerequisites.</i> Ensure that docker is installed on the machine on which you run what follows. If you're using an Ubuntu-based AWS machine, then docker is already installed.</p>
+<p><i>Cluster setup, directory structure</i></p>
+<ul>
+<li><p>Instantiate a cluster on AWS, (or GCP, however I have not tested this there).  Keep a note of the IP address of the cluster, as well as the exposed port of the cluster. It is conventional to set the cluster port to <tt>80</tt>. Once the cluster is setup, <tt>ssh</tt> into it. </p>
+</li>
+<li><p>Ensure that your docker directory has the following directory structure:</p>
+</li>
+</ul>
+<div class="codeblock">
+<div class="blockcontent"><pre>
+docker
+| - Dockerfile
+| - requirements.txt
+| - app
+|   | - main.py (this is where your model is loaded into memory and used for inference)
+| - pretrained_models
+|   | - model_ckpt.bin (or equivalent saved model checkpoint)
+</pre></div></div>
+<p>(See Appendix for examples of what <tt>Dockerfile</tt> and <tt>requirements.txt</tt> look like.)</p>
+<ul>
+<li><p>Copy the above directory from your local machine to the remote machine. There are several ways to do this, probably most commonly using either <tt>scp</tt> or <tt>rsync</tt>. I prefer <tt>rsync</tt> due to its versatility, one way to do this is <tt>rsync -az &ndash;progress -e {ssh creds for your machine} /local/path/docker ubuntu@A.B.C.D:/home/ubuntu/remote_docker</tt>. This will copy the directory to <tt>/home/ubuntu/remote_docker/docker/</tt> on the remote machine. (<tt>{ssh creds to your machine}</tt> would look something like <tt>&ldquo;ssh -i /path/to/pem/xyz.pem&rdquo;</tt>.)</p>
+</li>
+</ul>
+<p><i>Getting docker going</i></p>
+<p><b>NB: if the below docker commands bark at you, tack on a <tt>sudo</tt> in front of any or all of them.</b></p>
+<ul>
+<li><p>On the remote machine, start the docker service with <tt>sudo service docker start</tt></p>
+</li>
+<li><p>Build the docker image with <tt>docker build -t myimage .</tt> &ndash; this will create a docker image named <tt>myimage</tt> and install all the dependencies specified in <tt>requirements.txt</tt>.</p>
+</li>
+<li><p>Instantiate a docker container with <tt>docker run -d &ndash;name mycontainer -p 80:80 myimage</tt>. This will instantiate a container named <tt>mycontainer</tt>. Conventionally, port <tt>80</tt> of your docker container will be exposed. However, if in your <tt>Dockerfile</tt> you expose a different port (e.g. <tt>7070</tt>, then the command should map port <tt>7070</tt> in the container to port <tt>80</tt> in the host), then you should instantiate the container accordingly: <tt>-p {host port}:{container port}</tt>. </p>
+</li>
+<li><p>If all goes well, you should be able to access your (deployed) model at <tt>A.B.C.D/docs</tt> . The details of the inputs and outputs are entirely dependent on how your model performs inference; that's all specified in <tt>main.py</tt>.</p>
+</li>
+</ul>
+<p><i>Clean up</i></p>
+<p>Run the following sequence of commands (in order) to delete all containers and images.</p>
+<ol>
+<li><p><tt>docker stop mycontainer</tt></p>
+</li>
+<li><p><tt>docker rm mycontainer</tt></p>
+</li>
+<li><p><tt>docker image rm myimage</tt></p>
+</li>
+<li><p><tt>docker system prune &ndash;all</tt></p>
+</li>
+</ol>
+<p>Finally, stop the service:</p>
+<ul>
+<li><p><tt>sudo service docker stop</tt></p>
+</li>
+</ul>
+<p><i>Appendix</i></p>
+<ul>
+<li><p><tt>requirements.txt</tt> contains all the software package requirements for your code to run, and it’ll be installed inside the container. Here’s an example (if you’re using FastAPI, you’ll at least need the last two lines below):</p>
+</li>
+</ul>
+<div class="codeblock">
+<div class="blockcontent"><pre>
+numpy
+torch
+transformers
+fastapi
+pydantic
+</pre></div></div>
+<ul>
+<li><p><tt>Dockerfile</tt> is essentially an instruction manual that tells docker to (a) copy the contents of your directory to the container and (b) install the required dependencies specified in <tt>requirements.txt</tt>. Make sure that when you copy it over, you retain the same directory structure as your <tt>docker/</tt> directory. <tt>tiangolo</tt>'s docker image (which we use as a base in this guide) expects the root directory to be called <tt>app</tt>, and the <tt>main.py</tt> to be itself in a directory also called <tt>app</tt> (which is a child of the root directory <tt>app</tt>). Here is an example <tt>Dockerfile</tt>:</p>
+</li>
+</ul>
+<div class="codeblock">
+<div class="blockcontent"><pre>
+FROM tiangolo/uvicorn-gunicorn-fastapi:python3.7
+COPY requirements.txt /app/requirements.txt
+RUN pip --no-cache-dir install -r requirements.txt
+COPY ./app/main.py /app/app/main.py
+COPY ./pretrained_models /app/pretrained_models
+RUN apt-get update
+</pre></div></div>
+<p><b>Useful resources</b></p>
+<ul>
+<li><p><a href="https://towardsdatascience.com/deployment-could-be-easy-a-data-scientists-guide-to-deploy-an-image-detection-fastapi-api-using-329cdd80400">deploy</a> a model with AWS EC2 and FastAPI (this tutorial is adapted from here):</p>
+</li>
+<li><p><a href="https://curiousily.com/posts/deploy-bert-for-sentiment-analysis-as-rest-api-using-pytorch-transformers-by-hugging-face-and-fastapi/">deploying</a> a HuggingFace model with FastAPI</p>
+</li>
+<li><p><a href="https://fastapi.tiangolo.com/deployment/docker/">tiangolo</a></p>
+</li>
+<li><p>useful docker <a href="https://getpocket.com/read/2479555719">commands</a></p>
+</li>
+</ul>
 <div id="footer">
 <div id="footer-text">
-Page generated 2021-07-18 20:50:46 MDT, by <a href="http://jemdoc.jaboc.net/">jemdoc</a>.
+Page generated 2021-07-18 22:22:34 MDT, by <a href="http://jemdoc.jaboc.net/">jemdoc</a>.
 </div>
 </div>
 </td>

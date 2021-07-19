@@ -1,6 +1,83 @@
 # jemdoc: menu{MENU}{guides.html}
 = ML Deployment Guide
 
-I'm collecting a guide for ML deployment, particularly given a /pretrained/ model checkpoint.
+I've consolidated a guide for ML model deployment on a remote machine served by FastAPI. I assume that you are starting with a /pretrained/ model checkpoint.
 
-== Deploying with Docker on AWS
+== Deploying with Docker on AWS and FastAPI
+
+/Note: For reference, this tutorial was done using a +t2.xlarge+ instance on AWS./
+
+/Prerequisites./ Ensure that docker is installed on the machine on which you run what follows. If you're using an Ubuntu-based AWS machine, then docker is already installed.
+
+/Cluster setup, directory structure/
+
+- Instantiate a cluster on AWS, (or GCP, however I have not tested this there).  Keep a note of the IP address of the cluster, as well as the exposed port of the cluster. It is conventional to set the cluster port to +80+. Once the cluster is setup, +ssh+ into it. 
+- Ensure that your docker directory has the following directory structure:
+
+~~~
+{}{pyint}
+docker
+| - Dockerfile
+| - requirements.txt
+| - app
+|   | - main.py (this is where your model is loaded into memory and used for inference)
+| - pretrained_models
+|   | - model_ckpt.bin (or equivalent saved model checkpoint)
+~~~
+
+(See Appendix for examples of what +Dockerfile+ and +requirements.txt+ look like.)
+
+- Copy the above directory from your local machine to the remote machine. There are several ways to do this, probably most commonly using either +scp+ or +rsync+. I prefer +rsync+ due to its versatility, one way to do this is +rsync -az --progress -e {ssh creds for your machine} {{/local/path/docker}} ubuntu@A.B.C.D:{{/home/ubuntu/remote_docker}}+. This will copy the directory to +{{/home/ubuntu/remote_docker/docker/}}+ on the remote machine. (+{ssh creds to your machine}+ would look something like +"ssh -i {{/path/to/pem/xyz.pem}}"+.)
+
+/Getting docker going/
+
+*NB: if the below docker commands bark at you, tack on a +sudo+ in front of any or all of them.*
+
+- On the remote machine, start the docker service with +sudo service docker start+
+- Build the docker image with +docker build -t myimage .+ -- this will create a docker image named +myimage+ and install all the dependencies specified in +requirements.txt+.
+- Instantiate a docker container with +docker run -d --name mycontainer -p 80:80 myimage+. This will instantiate a container named +mycontainer+. Conventionally, port +80+ of your docker container will be exposed. However, if in your +Dockerfile+ you expose a different port (e.g. +7070+, then the command should map port +7070+ in the container to port +80+ in the host), then you should instantiate the container accordingly: +-p {host port}:{container port}+. 
+- If all goes well, you should be able to access your (deployed) model at +A.B.C.D/docs+ . The details of the inputs and outputs are entirely dependent on how your model performs inference; that's all specified in +main.py+.
+
+/Clean up/
+
+Run the following sequence of commands (in order) to delete all containers and images.
+
+. +docker stop mycontainer+
+. +docker rm mycontainer+
+. +docker image rm myimage+
+. +docker system prune --all+
+
+Finally, stop the service:
+- +sudo service docker stop+
+
+/Appendix/
+
+- +requirements.txt+ contains all the software package requirements for your code to run, and it’ll be installed inside the container. Here’s an example (if you’re using FastAPI, you’ll at least need the last two lines below):
+
+~~~
+{}{pyint}
+numpy
+torch
+transformers
+fastapi
+pydantic
+~~~
+
+- +Dockerfile+ is essentially an instruction manual that tells docker to (a) copy the contents of your directory to the container and (b) install the required dependencies specified in +requirements.txt+. Make sure that when you copy it over, you retain the same directory structure as your +docker/+ directory. +tiangolo+'s docker image (which we use as a base in this guide) expects the root directory to be called +app+, and the +main.py+ to be itself in a directory also called +app+ (which is a child of the root directory +app+). Here is an example +Dockerfile+:
+
+~~~
+{}{pyint}
+FROM tiangolo/uvicorn-gunicorn-fastapi:python3.7
+COPY requirements.txt /app/requirements.txt
+RUN pip --no-cache-dir install -r requirements.txt
+COPY ./app/main.py /app/app/main.py
+COPY ./pretrained_models /app/pretrained_models
+RUN apt-get update
+~~
+
+*Useful resources*
+
+- [https://towardsdatascience.com/deployment-could-be-easy-a-data-scientists-guide-to-deploy-an-image-detection-fastapi-api-using-329cdd80400 deploy] a model with AWS EC2 and FastAPI (this tutorial is adapted from here):
+- [https://curiousily.com/posts/deploy-bert-for-sentiment-analysis-as-rest-api-using-pytorch-transformers-by-hugging-face-and-fastapi/ deploying] a HuggingFace model with FastAPI
+- [https://fastapi.tiangolo.com/deployment/docker/ tiangolo]
+- useful docker [https://getpocket.com/read/2479555719 commands]
